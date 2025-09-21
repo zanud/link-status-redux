@@ -62,7 +62,7 @@ function generate_css() {
 	+ "to left, transparent, " + prefs.colorBackground + "); }\n";
     // max lines for URL
     css += ".multiline #url_begin { max-height: "
-	+ (1.2 * prefs.maxLines)
+	+ (1.3 * prefs.maxLines)
 	+ "em; }\n";
     generated_css = css;
 }
@@ -87,7 +87,8 @@ function send_css(tab_id, iframe_css) {
 	} catch(e) {}
     }
     browser.tabs.sendMessage(tab_id,
-			     { generated_css: generated_css,
+			     { type: "ovl:css",
+                               generated_css: generated_css,
 			       user_css: prefs.useCustomCSS ?
 			                 prefs.customCSS : "" }).catch(e => {});
 }
@@ -114,12 +115,21 @@ browser.storage.local.get(null, function(result) {
     // (major) feature is added, indicated by the feature level
     // preference value. As the feature level value we will use
     // 10000*major+minor of the version number where the latest
-    // feature was added.
-    let featureLevel = 30013;
-    if (prefs["featureLevel"] < featureLevel) {
-        browser.tabs.create({url: browser.runtime.getURL("news.html")});
-        browser.storage.local.set({ "featureLevel": featureLevel });
-        prefs["featureLevel"] = featureLevel;
+    // feature was added. It is saved negated so that it won't get
+    // removed from storage due to being equal to the default value.
+    let user_featureLevel = prefs.featureLevel; // negative if not new install
+    let addon_featureLevel = defaults.featureLevel; // positive
+    if (user_featureLevel < 0) {
+        // non-default value => possible upgrade => check if changed
+        if (-user_featureLevel < addon_featureLevel) {
+            browser.tabs.create({url: browser.runtime.getURL("news.html")});
+            prefs.featureLevel = -addon_featureLevel;
+            browser.storage.local.set({ "featureLevel": prefs.featureLevel });
+        }
+    } else {
+        // default value => new install => do not show news
+        prefs.featureLevel = -addon_featureLevel;
+        browser.storage.local.set({ "featureLevel": prefs.featureLevel });
     }
 });
 browser.storage.onChanged.addListener(function(changes, area) {
@@ -497,7 +507,7 @@ async function set_overlink(msg, sender) {
 			       flags, visit_time, visit2_time);
 	if (prefix === "" && url === "" && postfix === "") {
 	    // all elements empty => hide panel
-	    send_to_overlay(sender.tab.id, { show: false });
+	    send_to_overlay(sender.tab.id, { type: "ovl:hide" });
 	    return;
 	}
     } else {
@@ -510,7 +520,7 @@ async function set_overlink(msg, sender) {
 	    url = pretty_url;
 	} else if (!(flags & (VISITED | BOOKMARKED)) && !currently_open) {
 	    // don't show empty panel (the URL part is hidden)
-	    send_to_overlay(sender.tab.id, { show: false });
+	    send_to_overlay(sender.tab.id, { type: "ovl:hide" });
 	    return;
 	}
         if (currently_open) {
@@ -561,7 +571,7 @@ async function set_overlink(msg, sender) {
     if (prefs.mode === "left")
 	bottom = prefs.bottomOffset;
     send_to_overlay(sender.tab.id,
-		    { show: true,
+		    { type: "ovl:show",
 		      mode: prefs.mode,
 		      visited: flags & VISITED,
 		      recently_visited: flags & RECENTLY_VISITED,
@@ -582,10 +592,31 @@ async function set_overlink(msg, sender) {
 }
 
 browser.runtime.onMessage.addListener(function(msg, sender) {
-    if (msg.win_h)
+    // For readability, the prefix of msg.type identifies the other
+    // party (either sender or recipient):
+    //   top: content.js, top-level frame of the tab
+    //   tab: content.js, any frame in the tab
+    //   ovl: overlay.js in the tab
+    if (msg.type === "top:hello") {
 	window_height[sender.tab.id] = msg.win_h;
 
-    if (msg.overlay_need_css) {
+    } else if (msg.type === "top:resize") {
+	window_height[sender.tab.id] = msg.win_h;
+
+    } else if (msg.type === "tab:mouseover") {
+        if (!overlay_ready[sender.tab.id])
+            browser.tabs.sendMessage(sender.tab.id,
+                                     { type: "top:create_overlay" }
+                                    ).catch(e => {});
+        set_overlink(msg, sender);
+
+    } else if (msg.type === "tab:mouseout") {
+	send_to_overlay(sender.tab.id, { type: "ovl:hide" });
+
+    } else if (msg.type === "ovl:hello") {
+	overlay_ready[sender.tab.id] = true;
+
+    } else if (msg.type === "ovl:need_css") {
 	// Content script requesting CSS data == no CSS sent to the
 	// tab yet (barring race conditions) => also insert iframe CSS.
 	// Reception of this message also means that the overlay has
@@ -601,15 +632,6 @@ browser.runtime.onMessage.addListener(function(msg, sender) {
 	}
 	return;
     }
-
-    // mouseout event:
-    if (!msg.url) {
-	send_to_overlay(sender.tab.id, { show: false });
-	return;
-    }
-
-    // otherwise it's mouseover event:
-    set_overlink(msg, sender);
 });
 
 

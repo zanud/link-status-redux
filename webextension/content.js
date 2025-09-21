@@ -1,4 +1,5 @@
 let anchor = null;
+let overlay_enabled = false;
 
 function create_overlay() {
     let overlay = document.getElementById(overlay_uuid);
@@ -33,17 +34,34 @@ function create_overlay() {
     }
 }
 
+function destroy_overlay() {
+    let overlay = document.getElementById(overlay_uuid);
+    if (overlay !== null)
+        overlay.parentNode.removeChild(overlay);
+}
+
+
 // If the overlay already exists, it was left by an older version of
 // the extension => remove it.
-let e = document.getElementById(overlay_uuid);
-if (e !== null) e.parentNode.removeChild(e);
+destroy_overlay();
 
 if (self === top && document instanceof HTMLDocument) {
-    create_overlay();
+    browser.runtime.onMessage.addListener(function(msg, sender) {
+        if (msg.type === "top:create_overlay") {
+            create_overlay();
+            overlay_enabled = true;
+        } else if (msg.type === "top:destroy_overlay") {
+            destroy_overlay();
+            overlay_enabled = false;
+        }
+    });
+
     self.addEventListener("resize", function(e) {
-	browser.runtime.sendMessage({ win_h: self.innerHeight }).catch(e => {});
+	browser.runtime.sendMessage({ type: "top:resize",
+                                      win_h: self.innerHeight }).catch(e => {});
     }, true);
-    browser.runtime.sendMessage({ win_h: self.innerHeight }).catch(e => {});
+    browser.runtime.sendMessage({ type: "top:hello",
+                                  win_h: self.innerHeight }).catch(e => {});
 }
 
 
@@ -59,15 +77,16 @@ document.addEventListener("mouseover", function(e) {
     }
     anchor = a;
     if (a === null) {
-        browser.runtime.sendMessage({}).catch(e => {});
+        browser.runtime.sendMessage({ type: "tab:mouseout" }).catch(e => {});
         return;
     }
-    if (self === top && document instanceof HTMLDocument)
+    if (self === top && document instanceof HTMLDocument && overlay_enabled)
 	create_overlay();
     let win_h = 0;
     if (self === top)
 	win_h = self.innerHeight;
-    browser.runtime.sendMessage({ url: a.href,
+    browser.runtime.sendMessage({ type: "tab:mouseover",
+                                  url: a.href,
 				  x: e.screenX,
 				  y: e.screenY,
 				  win_h: win_h }).catch(e => {});

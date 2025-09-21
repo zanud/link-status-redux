@@ -3,7 +3,7 @@
     "manifest_version": 2,
     "default_locale": "en",
     "name": "Link Status Redux",
-    "version": "3.13",
+    "version": "3.21",
     "author": "Juha Aatrokoski",
     "icons": {
 	"32": "icon.png"
@@ -32,11 +32,6 @@
 	    "match_about_blank": true,
 	    "all_frames": true
 	}
-    ],
-    "web_accessible_resources": [
-	"overlay.css",
-	"overlay.html",
-	"overlay.js"
     ],
     "options_ui": {
 	"page": "options.html",

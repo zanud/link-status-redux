@@ -34,6 +34,12 @@
       pointer was too close
 */
 
+:root {
+    /* This is the default, but put it here explicitly as it is a part of
+       a bugfix/workaround: */
+    color-scheme: normal;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -46,7 +52,7 @@ div {
     border-style: solid;
     border-width: 0;
     border-color: #909090;
-    line-height: 1.2em; /* hard-coded into JS, do not override */
+    line-height: 1.3em; /* hard-coded into JS, do not override */
 }
 .wrapper {
     /* common for wrapper,url_wrapper,url_begin_wrapper,url_end_wrapper */
@@ -56,7 +62,11 @@ div {
     position: fixed;
     display: flex;
     align-items: flex-start;
-    padding: 3px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 4px;
+    padding-right: 4px;
+    box-sizing: border-box;
     max-width: 100%;
 }
 .affix {
@@ -75,7 +85,7 @@ div {
 }
 .multiline #url_begin {
     position: relative;
-    max-height: 2.4em; /* N * line-height, overridden by preferences */
+    max-height: 2.6em; /* N * line-height, overridden by preferences */
     white-space: pre-wrap;
     word-break: break-all;
     z-index: 0;
@@ -88,7 +98,7 @@ div {
     position: relative;
     white-space: pre;
     z-index: 0;
-    height: 1.2em; /* 1*line-height */
+    height: 1.3em; /* 1*line-height */
     overflow: hidden;
 }
 .multiline #url_end {
@@ -96,7 +106,7 @@ div {
     bottom: 0;
     right: 0;
     border-top: 2px dashed #f44;
-    height: 1.2em; /* 1*line-height */
+    height: 1.3em; /* 1*line-height */
     white-space: pre;
     text-align: right;
     z-index: 1;
@@ -106,7 +116,7 @@ div {
     right: 0;
     top: 0;
     width: 50%;
-    height: 1.2em; /* 1*line-height */
+    height: 1.3em; /* 1*line-height */
     overflow: hidden;
 }
 .oneline #url_end {
@@ -115,7 +125,7 @@ div {
     top: 0;
     white-space: pre;
     z-index: 1;
-    height: 1.2em; /* 1*line-height */
+    height: 1.3em; /* 1*line-height */
     text-align: right;
 }
 .overflow {
@@ -123,13 +133,13 @@ div {
     position: absolute;
     z-index: 2;
     width: 3em;
-    height: 1.2em; /* 1*line-height */
+    height: 1.3em; /* 1*line-height */
 }
 #overflow_begin {
     background: linear-gradient(to right, transparent, #cecece);
 }
 .multiline #overflow_begin {
-    bottom: 1.2em;
+    bottom: 1.3em;
     right: 0;
 }
 .oneline #overflow_begin {
